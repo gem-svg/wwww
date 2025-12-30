@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 Radar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+        }
+
+        /* Radar Container */
+        .radar-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: #0f0f0f;
+            transition: background 0.3s;
+        }
+
+        .radar-container.transparent-bg {
+            background: transparent;
+            padding: 0;
+        }
+
+        .radar-container.transparent-bg #radarImage {
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        #radarImage {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 4px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+            transition: transform 0.3s ease;
+        }
+
+        /* Side Panel */
+        .side-panel {
+            width: 350px;
+            min-width: 250px;
+            max-width: 600px;
+            background: #121212;
+            border-left: 1px solid #222;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .resize-handle {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: ew-resize;
+            background: transparent;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+
+        .resize-handle:hover,
+        .resize-handle.resizing {
+            background: #5096ff;
+        }
+
+        /* Header */
+        .panel-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+            border-bottom: 1px solid #222;
+        }
+
+        .panel-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .panel-header p {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Settings Button */
+        .settings-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #999;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .settings-btn:hover {
+            background: #222;
+            color: #fff;
+            border-color: #444;
+        }
+
+        /* Toggle Panel Button */
+        .toggle-panel-btn,
+        .rotate-btn {
+            position: absolute;
+            background: transparent;
+            border: none;
+            color: #666;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            z-index: 100;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        .toggle-panel-btn {
+            top: 20px;
+            left: 20px;
+        }
+
+        .rotate-btn {
+            top: 20px;
+            left: 140px;
+        }
+
+        .toggle-panel-btn:hover,
+        .rotate-btn:hover {
+            color: #5096ff;
+        }
+
+        .side-panel.hidden {
+            display: none;
+        }
+
+        /* Teams Container */
+        .teams-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .team-section {
+            margin-bottom: 20px;
+        }
+
+        .team-header {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .team-header.terrorists {
+            background: rgba(255, 80, 80, 0.15);
+            color: #ff5050;
+            border-left: 3px solid #ff5050;
+        }
+
+        .team-header.counter-terrorists {
+            background: rgba(80, 150, 255, 0.15);
+            color: #5096ff;
+            border-left: 3px solid #5096ff;
+        }
+
+        .team-count {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        /* Player Card */
+        .player-card {
+            background: #1a1a1a;
+            border: 1px solid #222;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+
+        .player-card:hover {
+            background: #1f1f1f;
+            border-color: #333;
+        }
+
+        .player-card.dead {
+            opacity: 0.4;
+            filter: grayscale(1);
+        }
+
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .player-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .player-hp {
+            font-size: 13px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        .player-hp.high {
+            background: #2d5016;
+            color: #7bc946;
+        }
+
+        .player-hp.medium {
+            background: #5a4a15;
+            color: #f5d742;
+        }
+
+        .player-hp.low {
+            background: #4a1515;
+            color: #f54242;
+        }
+
+        .player-stats {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            margin-bottom: 8px;
+            color: #999;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stat-label {
+            color: #666;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .player-money {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #7bc946;
+            margin-bottom: 8px;
+            padding: 6px 8px;
+            background: rgba(123, 201, 70, 0.15);
+            border-radius: 4px;
+            border-left: 3px solid #7bc946;
+        }
+
+        .player-weapons {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 11px;
+            padding-top: 8px;
+            border-top: 1px solid #222;
+        }
+
+        .weapon-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 6px;
+            background: #1f1f1f;
+            border-radius: 3px;
+        }
+
+        .weapon-label {
+            font-size: 9px;
+            color: #666;
+            min-width: 50px;
+        }
+
+        .weapon-name {
+            color: #f5d742;
+            font-weight: 600;
+        }
+
+        .weapon-name.primary {
+            color: #ff6b6b;
+        }
+
+        .indicators {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .indicator.kit {
+            background: rgba(123, 201, 70, 0.2);
+            color: #7bc946;
+            border: 1px solid #7bc946;
+        }
+
+        .indicator.bomb {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+            border: 1px solid #ff6b6b;
+            animation: bombPulse 1.5s infinite;
+        }
+
+        .indicator.planting {
+            background: rgba(245, 215, 66, 0.2);
+            color: #f5d742;
+            border: 1px solid #f5d742;
+        }
+
+        .indicator.scoped {
+            background: rgba(66, 245, 245, 0.2);
+            color: #42f5f5;
+            border: 1px solid #42f5f5;
+        }
+
+        @keyframes bombPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.7;
+                transform: scale(1.05);
+            }
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: #121212;
+            border-left: 1px solid #222;
+            padding: 20px;
+            transition: right 0.3s;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .settings-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-close:hover {
+            color: #fff;
+        }
+
+        .settings-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-label {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #999;
+        }
+
+        .setting-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #222;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .toggle.active {
+            background: #5096ff;
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            transition: left 0.2s;
+        }
+
+        .toggle.active::after {
+            left: 22px;
+        }
+
+        /* Scrollbar */
+        .teams-container::-webkit-scrollbar,
+        .settings-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .teams-container::-webkit-scrollbar-track,
+        .settings-panel::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        .teams-container::-webkit-scrollbar-thumb,
+        .settings-panel::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        .teams-container::-webkit-scrollbar-thumb:hover,
+        .settings-panel::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Radar Container -->
+    <div class="radar-container">
+        <button class="toggle-panel-btn" id="togglePanelBtn" onclick="togglePanel()">👁️ Hide Panel</button>
+        <button class="rotate-btn" id="rotateBtn" onclick="rotateMap()">🔄 Rotate</button>
+        <div id="radarWrapper" style="position: relative; display: inline-block;">
+            <img id="radarImage" src="/map" alt="Radar" />
+            <canvas id="markerCanvas" style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
+        </div>
+    </div>
+
+    <!-- Side Panel -->
+    <div class="side-panel" id="sidePanel">
+        <div class="resize-handle" id="resizeHandle"></div>
+
+        <div class="panel-header">
+            <h1>CS2 Live Radar</h1>
+            <p>Real-time player tracking</p>
+            <button class="settings-btn" onclick="toggleSettings()">⚙ Settings</button>
+        </div>
+
+        <div class="teams-container" id="teamsContainer">
+            <!-- Teams will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settingsPanel">
+        <button class="settings-close" onclick="toggleSettings()">×</button>
+        <h2 class="settings-title">Settings</h2>
+
+        <div class="setting-group">
+            <div class="setting-label">Update Rate</div>
+            <div class="setting-control">
+                <span style="color: #666; font-size: 12px;">100ms (Fast)</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-label">Show Dead Players</div>
+            <div class="setting-control">
+                <div class="toggle active" onclick="toggleSetting(this)" data-setting="showDead"></div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-label">Show Teams (Player List)</div>
+            <div class="setting-control" style="flex-direction: column; gap: 8px; align-items: flex-start;">
+                <label
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #999; font-size: 12px;">
+                    <input type="radio" name="teamFilter" value="all" checked onchange="changeTeamFilter(this.value)"
+                        style="cursor: pointer;">
+                    <span>Show All</span>
+                </label>
+                <label
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #999; font-size: 12px;">
+                    <input type="radio" name="teamFilter" value="t" onchange="changeTeamFilter(this.value)"
+                        style="cursor: pointer;">
+                    <span>Terrorists Only</span>
+                </label>
+                <label
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #999; font-size: 12px;">
+                    <input type="radio" name="teamFilter" value="ct" onchange="changeTeamFilter(this.value)"
+                        style="cursor: pointer;">
+                    <span>CT Only</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-label">Show Teams (On Map)</div>
+            <div class="setting-control" style="flex-direction: column; gap: 8px; align-items: flex-start;">
+                <label
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #999; font-size: 12px;">
+                    <input type="radio" name="mapTeamFilter" value="all" checked
+                        onchange="changeMapTeamFilter(this.value)" style="cursor: pointer;">
+                    <span>Show All</span>
+                </label>
+                <label
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #999; font-size: 12px;">
+                    <input type="radio" name="mapTeamFilter" value="t" onchange="changeMapTeamFilter(this.value)"
+                        style="cursor: pointer;">
+                    <span>Terrorists Only</span>
+                </label>
+                <label
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #999; font-size: 12px;">
+                    <input type="radio" name="mapTeamFilter" value="ct" onchange="changeMapTeamFilter(this.value)"
+                        style="cursor: pointer;">
+                    <span>CT Only</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-label">Show on Map</div>
+            <div class="setting-control" style="flex-direction: column; gap: 8px; align-items: flex-start;">
+                <label
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #999; font-size: 12px;">
+                    <input type="checkbox" id="showBomb" checked style="cursor: pointer;">
+                    <span>💣 Dropped Bomb</span>
+                </label>
+                <label
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #999; font-size: 12px;">
+                    <input type="checkbox" id="showKits" checked style="cursor: pointer;">
+                    <span>🔧 Defuse Kits</span>
+                </label>
+                <label
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #999; font-size: 12px;">
+                    <input type="checkbox" id="showWeapons" checked style="cursor: pointer;">
+                    <span>🔫 Dropped Weapons</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-label">Player Dot Size</div>
+            <div class="setting-control" style="flex-direction: column; gap: 8px; width: 100%;">
+                <input type="range" id="playerSize" min="8" max="24" value="14" step="2"
+                    style="width: 100%; cursor: pointer;" oninput="updatePlayerSize(this.value)">
+                <span id="playerSizeValue" style="color: #666; font-size: 11px;">14px</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-label">Show View Direction</div>
+            <div class="setting-control">
+                <label
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #999; font-size: 12px;">
+                    <input type="checkbox" id="showViewDirection" checked style="cursor: pointer;"
+                        onchange="toggleViewDirection(this.checked)">
+                    <span>👁️ Direction Lines</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-label">Follow Player</div>
+            <div class="setting-control"
+                style="flex-direction: column; gap: 8px; width: 100%; align-items: flex-start;">
+                <select id="followPlayer"
+                    style="width: 100%; padding: 6px; background: #1a1a1a; border: 1px solid #333; color: #e0e0e0; border-radius: 4px; cursor: pointer;"
+                    onchange="changeFollowPlayer(this.value)">
+                    <option value="">None (Free Camera)</option>
+                </select>
+                <span style="color: #666; font-size: 10px;">Camera will follow selected player</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let updateInterval;
+        let mapRotation = 0; // 0, 90, 180, 270
+        let settings = {
+            showDead: true,
+            teamFilter: 'all', // 'all', 't', 'ct' - for player list
+            mapTeamFilter: 'all', // 'all', 't', 'ct' - for map display
+            playerSize: 14,
+            showViewDirection: true,
+            followPlayer: '',
+            smoothMarkers: true // Enable smooth marker transitions
+        };
+
+        // Marker interpolation state
+        let targetPositions = {}; // { odlayerId: { x, y, viewAngle, team, ... } }
+        let currentPositions = {}; // Interpolated positions for smooth rendering
+        let lastPlayers = []; // Store last player data for rendering
+        const LERP_SPEED = 0.25; // Interpolation speed (0.1 = slow, 0.5 = fast)
+
+        // Initialize canvas when image loads
+        const radarImage = document.getElementById('radarImage');
+        const canvas = document.getElementById('markerCanvas');
+        const ctx = canvas.getContext('2d');
+        let canvasReady = false;
+
+        // Function to sync canvas size with image
+        function syncCanvasSize() {
+            if (radarImage.complete && radarImage.naturalWidth > 0) {
+                const w = radarImage.naturalWidth || radarImage.width || 1024;
+                const h = radarImage.naturalHeight || radarImage.height || 1024;
+                if (canvas.width !== w || canvas.height !== h) {
+                    canvas.width = w;
+                    canvas.height = h;
+                    console.log('Canvas resized to:', w, 'x', h);
+                }
+                canvasReady = true;
+            }
+        }
+
+        // Initial sync
+        radarImage.onload = syncCanvasSize;
+
+        // Re-sync periodically in case image updates
+        setInterval(syncCanvasSize, 1000);
+
+        // Try to sync immediately if image already loaded
+        if (radarImage.complete) {
+            syncCanvasSize();
+        }
+
+        // Smooth interpolation function
+        function lerp(start, end, t) {
+            return start + (end - start) * t;
+        }
+
+        // Animation loop for smooth marker movement
+        function animateMarkers() {
+            if (!settings.smoothMarkers) {
+                requestAnimationFrame(animateMarkers);
+                return;
+            }
+
+            // Update current positions towards targets
+            for (const playerId in targetPositions) {
+                const target = targetPositions[playerId];
+                if (!currentPositions[playerId]) {
+                    // First time seeing this player, snap to position
+                    currentPositions[playerId] = { ...target };
+                } else {
+                    // Interpolate towards target
+                    currentPositions[playerId].x = lerp(currentPositions[playerId].x, target.x, LERP_SPEED);
+                    currentPositions[playerId].y = lerp(currentPositions[playerId].y, target.y, LERP_SPEED);
+                    currentPositions[playerId].viewAngle = lerpAngle(currentPositions[playerId].viewAngle, target.viewAngle, LERP_SPEED);
+                    // Copy other properties directly
+                    currentPositions[playerId].team = target.team;
+                    currentPositions[playerId].health = target.health;
+                    currentPositions[playerId].hasBomb = target.hasBomb;
+                    currentPositions[playerId].isAlive = target.isAlive;
+                    currentPositions[playerId].name = target.name;
+                }
+            }
+
+            // Remove players that are no longer in targets
+            for (const playerId in currentPositions) {
+                if (!targetPositions[playerId]) {
+                    delete currentPositions[playerId];
+                }
+            }
+
+            // Render markers
+            renderMarkers();
+            requestAnimationFrame(animateMarkers);
+        }
+
+        // Interpolate angles correctly (handle wrap-around)
+        function lerpAngle(start, end, t) {
+            let diff = end - start;
+            while (diff > 180) diff -= 360;
+            while (diff < -180) diff += 360;
+            return start + diff * t;
+        }
+
+        // Render markers on canvas
+        function renderMarkers() {
+            if (!ctx || canvas.width === 0) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const scale = radarImage.width / (radarImage.naturalWidth || radarImage.width || 1024);
+            const dotSize = settings.playerSize;
+
+            for (const playerId in currentPositions) {
+                const p = currentPositions[playerId];
+                if (!p.isAlive) continue;
+
+                // Apply team filter
+                if (settings.mapTeamFilter === 't' && p.team !== 2) continue;
+                if (settings.mapTeamFilter === 'ct' && p.team !== 3) continue;
+
+                const x = p.x * scale;
+                const y = p.y * scale;
+
+                // Draw view direction line
+                if (settings.showViewDirection) {
+                    const angle = p.viewAngle * Math.PI / 180;
+                    const lineLength = 500 * scale;
+                    const endX = x + Math.cos(angle) * lineLength;
+                    const endY = y + Math.sin(angle) * lineLength;
+
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(endX, endY);
+                    ctx.strokeStyle = p.team === 2 ? 'rgba(255, 80, 80, 0.5)' : 'rgba(80, 150, 255, 0.5)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+
+                // Draw bomb glow if player has bomb
+                if (p.hasBomb) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, dotSize / 2 + 4, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
+                    ctx.fill();
+                }
+
+                // Draw player dot outline
+                ctx.beginPath();
+                ctx.arc(x, y, dotSize / 2 + 1, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fill();
+
+                // Draw player dot
+                ctx.beginPath();
+                ctx.arc(x, y, dotSize / 2, 0, Math.PI * 2);
+                ctx.fillStyle = p.team === 2 ? '#ff5050' : '#5096ff';
+                ctx.fill();
+
+                // Draw HP text
+                ctx.font = 'bold 11px Arial';
+                const hpColor = p.health > 75 ? '#4dff4d' : p.health > 40 ? '#ffff4d' : '#ff4d4d';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                ctx.textAlign = 'center';
+                ctx.fillText(p.health, x + 1, y - dotSize - 3 + 1);
+                ctx.fillStyle = hpColor;
+                ctx.fillText(p.health, x, y - dotSize - 3);
+            }
+        }
+
+        // Update target positions from SSE data
+        function updateMarkerTargets(players) {
+            targetPositions = {};
+            lastPlayers = players;
+
+            for (const p of players) {
+                if (p.isAlive && p.x !== undefined && p.y !== undefined) {
+                    targetPositions[p.userId] = {
+                        x: p.x,
+                        y: p.y,
+                        viewAngle: p.viewAngle || 0,
+                        team: p.team,
+                        health: p.health,
+                        hasBomb: p.hasBomb,
+                        isAlive: p.isAlive,
+                        name: p.name
+                    };
+                }
+            }
+        }
+
+        // Start animation loop
+        requestAnimationFrame(animateMarkers);
+
+        function changeTeamFilter(value) {
+            settings.teamFilter = value;
+            updatePlayers(); // Refresh display
+        }
+
+        function changeMapTeamFilter(value) {
+            settings.mapTeamFilter = value;
+        }
+
+        // Panel resize functionality
+        let isResizing = false;
+        let lastDownX = 0;
+
+        const sidePanel = document.getElementById('sidePanel');
+        const resizeHandle = document.getElementById('resizeHandle');
+
+        resizeHandle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            lastDownX = e.clientX;
+            resizeHandle.classList.add('resizing');
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+
+            const offsetRight = document.body.offsetWidth - (e.clientX - document.body.offsetLeft);
+            const minWidth = 250;
+            const maxWidth = 600;
+
+            if (offsetRight > minWidth && offsetRight < maxWidth) {
+                sidePanel.style.width = offsetRight + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                resizeHandle.classList.remove('resizing');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
+
+        // Toggle side panel visibility
+        let isPanelHidden = false;
+
+        function togglePanel() {
+            const panel = document.getElementById('sidePanel');
+            const btn = document.getElementById('togglePanelBtn');
+            const radarContainer = document.querySelector('.radar-container');
+
+            isPanelHidden = !isPanelHidden;
+
+            if (isPanelHidden) {
+                panel.classList.add('hidden');
+                radarContainer.classList.add('transparent-bg');
+                btn.textContent = '👁️ Show Panel';
+            } else {
+                panel.classList.remove('hidden');
+                radarContainer.classList.remove('transparent-bg');
+                btn.textContent = '👁️ Hide Panel';
+            }
+        }
+
+        function updatePlayerSize(value) {
+            settings.playerSize = parseInt(value);
+            document.getElementById('playerSizeValue').textContent = value + 'px';
+        }
+
+        function toggleViewDirection(enabled) {
+            settings.showViewDirection = enabled;
+        }
+
+        function changeFollowPlayer(name) {
+            settings.followPlayer = name;
+        }
+
+        function rotateMap() {
+            mapRotation = (mapRotation + 90);
+            if (mapRotation >= 360) {
+                mapRotation = 0;
+            }
+            // Rotate the wrapper which contains both image and canvas
+            const radarWrapper = document.getElementById('radarWrapper');
+            radarWrapper.style.transform = `rotate(${mapRotation}deg)`;
+        }
+
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('open');
+        }
+
+        function toggleSetting(element) {
+            element.classList.toggle('active');
+            const setting = element.dataset.setting;
+            settings[setting] = element.classList.contains('active');
+        }
+
+        function updateRadar() {
+            const viewParam = settings.showViewDirection ? 'true' : 'false';
+            const followParam = encodeURIComponent(settings.followPlayer || '');
+            const teamParam = settings.mapTeamFilter;
+            document.getElementById('radarImage').src = '/map?size=' + settings.playerSize + '&view=' + viewParam + '&follow=' + followParam + '&team=' + teamParam + '&t=' + new Date().getTime();
+        }
+
+        async function updatePlayers() {
+            try {
+                const response = await fetch('/players');
+                const players = await response.json();
+
+                let terrorists = players.filter(p => p.team === 2);
+                let cts = players.filter(p => p.team === 3);
+
+                // Apply team filter
+                if (settings.teamFilter === 't') {
+                    cts = []; // Hide CT
+                } else if (settings.teamFilter === 'ct') {
+                    terrorists = []; // Hide T
+                }
+
+                let html = '';
+
+                // Terrorists
+                if (terrorists.length > 0) {
+                    const aliveT = terrorists.filter(p => p.isAlive).length;
+                    html += `
+                        <div class="team-section">
+                            <div class="team-header terrorists">
+                                <span>TERRORISTS</span>
+                                <span class="team-count">${aliveT}/${terrorists.length} alive</span>
+                            </div>
+                            ${terrorists.map(p => renderPlayer(p)).join('')}
+                        </div>
+                    `;
+                }
+
+                // Counter-Terrorists
+                if (cts.length > 0) {
+                    const aliveCT = cts.filter(p => p.isAlive).length;
+                    html += `
+                        <div class="team-section">
+                            <div class="team-header counter-terrorists">
+                                <span>COUNTER-TERRORISTS</span>
+                                <span class="team-count">${aliveCT}/${cts.length} alive</span>
+                            </div>
+                            ${cts.map(p => renderPlayer(p)).join('')}
+                        </div>
+                    `;
+                }
+
+                document.getElementById('teamsContainer').innerHTML = html || '<p style="text-align: center; color: #666; padding: 20px;">No players found</p>';
+
+                // Update follow player dropdown
+                const followSelect = document.getElementById('followPlayer');
+                const currentValue = followSelect.value;
+                const allPlayers = [...terrorists, ...cts].filter(p => p.isAlive);
+
+                let options = '<option value="">None (Free Camera)</option>';
+                allPlayers.forEach(p => {
+                    const teamLabel = p.team === 2 ? '[T]' : '[CT]';
+                    options += `<option value="${p.name}" ${p.name === currentValue ? 'selected' : ''}>${teamLabel} ${p.name}</option>`;
+                });
+                followSelect.innerHTML = options;
+            } catch (error) {
+                console.error('Failed to update players:', error);
+            }
+        }
+
+        function renderPlayer(player) {
+            if (!settings.showDead && !player.isAlive) return '';
+
+            const hpClass = player.health > 75 ? 'high' : player.health > 40 ? 'medium' : 'low';
+            const deadClass = player.isAlive ? '' : 'dead';
+
+            let indicators = '';
+            if (player.hasBomb) indicators += '<div class="indicator bomb">💣 BOMB</div>';
+            if (player.hasKit) indicators += '<div class="indicator kit">🔧 KIT</div>';
+            if (player.isPlanting || player.isDefusing) indicators += '<div class="indicator planting">⚠ ACTION</div>';
+            if (player.isScoped) indicators += '<div class="indicator scoped">🎯 SCOPED</div>';
+
+            return `
+                <div class="player-card ${deadClass}">
+                    <div class="player-header">
+                        <div class="player-name">${player.name || 'Unknown'}</div>
+                        <div class="player-hp ${hpClass}">${player.health}</div>
+                    </div>
+
+                    <div class="player-money">
+                        💰 \$${player.money.toLocaleString()}
+                    </div>
+
+                    <div class="player-stats">
+                        <div class="stat">
+                            <span class="stat-label">K:</span>
+                            <span class="stat-value">${player.kills}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">D:</span>
+                            <span class="stat-value">${player.deaths}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">A:</span>
+                            <span class="stat-value">${player.assists}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Armor:</span>
+                            <span class="stat-value">${player.armor}</span>
+                        </div>
+                    </div>
+
+                    <div class="player-weapons">
+                        ${player.primaryWeapon ? `
+                            <div class="weapon-item">
+                                <span class="weapon-label">Primary:</span>
+                                <span class="weapon-name primary">${player.primaryWeapon}</span>
+                            </div>
+                        ` : ''}
+                        ${player.secondaryWeapon ? `
+                            <div class="weapon-item">
+                                <span class="weapon-label">Secondary:</span>
+                                <span class="weapon-name">${player.secondaryWeapon}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    ${indicators ? `<div class="indicators">${indicators}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function startAutoUpdate() {
+            let sseConnected = false;
+            let sseRetries = 0;
+            const maxRetries = 5;
+
+            function connectSSE() {
+                console.log('Connecting to SSE stream...');
+                const eventSource = new EventSource('/stream');
+
+                eventSource.onopen = function () {
+                    console.log('SSE connected successfully!');
+                    sseConnected = true;
+                    sseRetries = 0;
+                };
+
+                eventSource.onmessage = function (event) {
+                    try {
+                        const players = JSON.parse(event.data);
+                        updatePlayersList(players);
+                        updateFollowDropdown(players);
+                        updateMarkerTargets(players); // Update smooth marker positions
+                    } catch (e) {
+                        console.error('SSE parse error:', e);
+                    }
+                };
+
+                eventSource.onerror = function (e) {
+                    console.log('SSE connection error, retry:', sseRetries);
+                    sseConnected = false;
+                    sseRetries++;
+
+                    if (sseRetries > maxRetries) {
+                        console.log('SSE max retries reached, using polling fallback');
+                        eventSource.close();
+                        startPollingFallback();
+                    }
+                };
+            }
+
+            // Fallback polling if SSE doesn't work
+            function startPollingFallback() {
+                console.log('Starting polling fallback for players...');
+                setInterval(async () => {
+                    try {
+                        const response = await fetch('/players?t=' + Date.now());
+                        const players = await response.json();
+                        updatePlayersList(players);
+                        updateFollowDropdown(players);
+                        updateMarkerTargets(players);
+                    } catch (e) {
+                        console.error('Polling error:', e);
+                    }
+                }, 100);
+            }
+
+            // Try SSE first
+            connectSSE();
+
+            // Keep polling for map image (background only)
+            if (updateInterval) clearInterval(updateInterval);
+            updateInterval = setInterval(() => {
+                updateRadar();
+            }, 100); // Slightly slower to reduce load
+        }
+
+        function updatePlayersList(players) {
+            let terrorists = players.filter(p => p.team === 2);
+            let cts = players.filter(p => p.team === 3);
+
+            // Apply team filter
+            if (settings.teamFilter === 't') {
+                cts = [];
+            } else if (settings.teamFilter === 'ct') {
+                terrorists = [];
+            }
+
+            let html = '';
+
+            // Terrorists
+            if (terrorists.length > 0) {
+                const aliveT = terrorists.filter(p => p.isAlive).length;
+                html += `
+                    <div class="team-section">
+                        <div class="team-header terrorists">
+                            <span>TERRORISTS</span>
+                            <span class="team-count">${aliveT}/${terrorists.length} alive</span>
+                        </div>
+                        ${terrorists.map(p => renderPlayer(p)).join('')}
+                    </div>
+                `;
+            }
+
+            // Counter-Terrorists
+            if (cts.length > 0) {
+                const aliveCT = cts.filter(p => p.isAlive).length;
+                html += `
+                    <div class="team-section">
+                        <div class="team-header counter-terrorists">
+                            <span>COUNTER-TERRORISTS</span>
+                            <span class="team-count">${aliveCT}/${cts.length} alive</span>
+                        </div>
+                        ${cts.map(p => renderPlayer(p)).join('')}
+                    </div>
+                `;
+            }
+
+            document.getElementById('teamsContainer').innerHTML = html || '<p style="text-align: center; color: #666; padding: 20px;">No players found</p>';
+        }
+
+        function updateFollowDropdown(players) {
+            const followSelect = document.getElementById('followPlayer');
+            const currentValue = followSelect.value;
+            const allPlayers = players.filter(p => p.isAlive);
+
+            let options = '<option value="">None (Free Camera)</option>';
+            allPlayers.forEach(p => {
+                const teamLabel = p.team === 2 ? '[T]' : '[CT]';
+                options += `<option value="${p.name}" ${p.name === currentValue ? 'selected' : ''}>${teamLabel} ${p.name}</option>`;
+            });
+            followSelect.innerHTML = options;
+        }
+
+        // Start on page load
+        startAutoUpdate();
+        updateRadar();
+    </script>
+</body>
+
+</html>
